@@ -80,8 +80,9 @@ Please follow the instructions from [ADD_PROJECT.md](https://github.com/cncf/git
 
 To add geo data (`country_id`, `tz`) and gender data (`sex`, `sex_prob`), do the following:
 - Download `allCountries.zip` file from geonames server[](http://download.geonames.org/export/dump/): `wget http://download.geonames.org/export/dump/allCountries.zip`.
-- Create `geonames` database via: `sudo -u postgres createdb geonames`, `sudo -u postgres psql geonames -f geonames.sql` or `[PGPASSWORD=...] psql -Upostgres geonames -f geonames.sql`. Table details in `geonames.info`
-- Create `gha_admin` role via `sudo -u postgres -c "create role gha_admin login password 'xyz'"`.
+- Create `geonames` database via: `sudo -u postgres createdb geonames`.
+- Create `gha_admin` role via `sudo -u postgres psql -c "create role gha_admin login password 'xyz'"`.
+- Create main table: `sudo -u postgres psql geonames -f geonames.sql` or `[PGPASSWORD=...] psql -Upostgres geonames -f geonames.sql`. Table details in `geonames.info`
 - Unzip `unzip allCountries.zip` and run `PG_PASS=... ./geodata.sh allCountries.txt` - this will populate the DB.
 - Create indices on columns to speedup localization: `sudo -u postgres psql geonames -f geonames_idx.sql`.
 - Make sure that you don't have any `nil`, `null` and `false` values saved in any `*_cache.json` file (those files are also saved when you `CTRL^C` running enchancement).
@@ -103,8 +104,16 @@ To add geo data (`country_id`, `tz`) and gender data (`sex`, `sex_prob`), do the
 
 - To import manual affiliations from a google sheet save this sheet as `affiliations.csv` and then use `./affiliations.sh` script.
 - Prepend with `UPDATE=1` to only import those marked as changed: column `changes='x'`.
+- Specify non-default column via `UPDATE_COL=col_name`, specify non-default value via `UPDATE_VAL=xx` or all-non-empty via `UPDATE_VAL='(all)'`.
+- So to import all rows where column "changed" is non-empty do: `` UPDATE=1 UPDATE_COL=changed UPDATE_VAL='(all)' SYNC_TO_CONFIG=1 NO_CACHE=1 DELETE_INCORRECT_LOWER=1 ./affiliations.sh ``.
 - Prepend with `RECHECK=1` to always ask for operation and allow updating found -> not found.
 - Prepend with `DBG=1` to enable verbose output.
+- Prepend with `SYNC_TO_CONFIG=1` to force writing exact same rolls from `github_users.json` back to `cncf-config/email-map`.
+- Prepend with `DELETE_INCORRECT_LOWER=1` to delete incorrect lower case email data from config when correct non-lower data is found and lower email is not the same as non-lower.
+- Prepend with `NO_CACHE=1` to avoid writing cache answers - useful when running in update mode, so we don't store decisions for next runs.
+- To manually sync given JSON login to email-map config use: `` [DBG=1] [DRY=1] [ALL_LOGINS=1 | ALL_EMAILS=1] ./sync_json_to_config.rb login[:email] [login2[:email2] [...]] ``.
+- To sync all logins from JSOn to config: `` ALL_LOGINS=1 ./sync_json_to_config.rb ``.
+- To sync all logis/emails pairs from JSON to config: `` ALL_EMAILS=1 ./sync_json_to_config.rb ``.
 - After finishing import add a status line to `affiliations_import.txt` file and update the online spreadsheet.
 - Update `company-names-mapping` if needed and then run `./company_names_mapping.sh`.
 - Run: `./sort_config.sh` and `./lower_unique.sh cncf-config/email-map`.
@@ -143,4 +152,6 @@ Alternative way using diff (for simple PRs that only add new users):
 - Download `login_contributions.csv` from that node.
 - Check for forbiden users: `./check_shas login_contributions.csv`.
 - Run `./update_login_contributions.rb` to update `github_users.json` file.
+- Run `JSON=affiliated.json ./update_login_contributions.rb && cp affiliated.json ../../devstats/github_users.json` to update `github_users.json` file in `cncf/devstats`.
 - Run `FULL=1 ./post_manual_checks.sh && ./post_manual_updates.sh`.
+- Commit the new `github_users.json` to `cncf/gitdm` and `cncf/devstats` repos.

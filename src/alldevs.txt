@@ -5428,7 +5428,6 @@ DP LLC	elson.o.rodriguez!intel.com	Elson O Rodriguez	69
 Huawei	yaozengzeng!zju.edu.cn	YaoZengzeng	69
 (Unknown)	koba0004!gmail.com	Toru Kobayashi	69
 Industrial Light & Magic	tatsuo!kaniwa.biz	Tatsuo Kaniwa	69
-Independent	ireneusz.pastusiak!gmail.com	Ireneusz Pastusiak	69
 NotFound	jpds!protonmail.com	Jon Davies	69
 YDEK Productions	matt!ydekproductions.com	Matt Robenolt	69
 Google	suniljames!users.noreply.github.com	Sunil James	69
@@ -34075,7 +34074,6 @@ Independent	mittalyashu77!gmail.com	Yashu Mittal	3
 BNP	nelvadas!gmail.com	Elvadas NONO	3
 (Unknown)	zufardhiyaulhaq!gmail.com	Zufar Dhiyaulhaq	3
 (Unknown)	he_xinworld!126.com	Xin He	3
-NotFound	31287649+braderhart!users.noreply.github.com	Brad Erhart	3
 (Unknown)	taherbohari52!gmail.com	Taher Bohari	3
 Canonical	nick.veitch!canonical.com	Nick Veitch	3
 Synergie	alexis.blandin!gmail.com	Alexis Blandin	3

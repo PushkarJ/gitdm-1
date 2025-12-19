@@ -4,7 +4,7 @@
 # FULL - do not use cache
 # CONFIG_FILE=file.txt
 # SH_LOCAL_JSON_PATH=in.json
-# This uses mapping.json, manual.json
+# This uses mapping.json, map_org_names.yaml, manual.json
 if [ ! -z "${USE_DB}" ]
 then
   if ( [ -z "${SH_DSN}" ] && [ ! -z "$1" ] )
@@ -23,6 +23,7 @@ then
 else
   if [ -z "$FULL" ]
   then
+    # This runs by default
     CACHED=1 TRUNC='' NO_ACQS=1 ./map_orgs && mv config.txt cncf-config/email-map && mv mapped.json github_users.json
   else
     CACHED='' TRUNC='' NO_ACQS=1 ./map_orgs && mv config.txt cncf-config/email-map && mv mapped.json github_users.json

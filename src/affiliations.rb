@@ -26,8 +26,8 @@ def affiliations(affiliations_file, json_file, email_map)
   prev_sources = {}
   json_data = JSON.parse File.read json_file
   json_data.each_with_index do |user, index|
-    email = user['email'].downcase
-    login = user['login'].downcase
+    email = user['email'].downcase.strip
+    login = user['login'].downcase.strip
     source = user['source']
     users[email] = [[index, user]]
     users[login] = [] unless users.key?(login)
@@ -60,8 +60,15 @@ def affiliations(affiliations_file, json_file, email_map)
     puts "#{source_type.capitalize} affiliation sources: #{eaffs.values.map { |v| v.values }.flatten.count { |v| v == source_type }}"
   end
 
+  # by default update mode checks for 'changes' column to have 'x' value
+  update_col = ENV['UPDATE_COL'] || "changes"
+  update_val = ENV['UPDATE_VAL'] || "x"
   update = !ENV['UPDATE'].nil?
   recheck = !ENV['RECHECK'].nil?
+  sync_to_config = !ENV['SYNC_TO_CONFIG'].nil?
+  delete_incorrect_lower = !ENV['DELETE_INCORRECT_LOWER'].nil?
+  no_cache = !ENV['NO_CACHE'].nil?
+  # p [update, update_col, update_val]
 
   # Check for carriage returns in CSV file
   if update
@@ -131,9 +138,12 @@ def affiliations(affiliations_file, json_file, email_map)
       end
 
       # In update mode only take rows with column changes=x
-      x = h['changes']
+      x = h[update_col]
       x = x.strip if x
-      next if update && x != 'x'
+      # p ['<', update, update_col, update_val, x]
+      next if update && update_val != '(all)' && x != update_val
+      next if update && update_val == '(all)' && x == ''
+      p [update, update_col, update_val, x] if dbg && update
       nu += 1
 
       # Bots
@@ -238,7 +248,7 @@ def affiliations(affiliations_file, json_file, email_map)
                   ans = answers[e]
                 else
                   s = "Line #{ln}, user #{users[e][0][1]['login']}, email #{e} has affiliation source type '#{sources[e]}' which has higher priority than 'manual'\n"
-                  s += "Config affiliations: #{eaffs[e].keys.join(', ')}\nJSON affiliations: #{users[e][0][1]['affiliation']}\nNew affiliations: #{affs_str}\nReplace? (y/n/q/s)"
+                  s += "Config affiliations: #{eaffs[e].keys.join(', ')}\nJSON affiliations: #{users[e][0][1]['affiliation']}\nNew  affiliations: #{affs_str}\nReplace? (y/n/q/s)"
                   puts s
                   ans = mgetc.downcase
                   puts "> #{ans}"
@@ -248,8 +258,10 @@ def affiliations(affiliations_file, json_file, email_map)
                     break
                   end
                   answers[e] = ans
-                  pretty = JSON.pretty_generate answers
-                  File.write json_cache, pretty
+                  unless no_cache
+                    pretty = JSON.pretty_generate answers
+                    File.write json_cache, pretty
+                  end
                 end
               end
               if ans == 'y'
@@ -317,7 +329,7 @@ def affiliations(affiliations_file, json_file, email_map)
                     ans = answers[e]
                   else
                     s = "Line #{ln}, user #{users[e][0][1]['login']}, email #{e} has affiliation source type '#{sources[e]}' which has higher priority than 'manual'\n"
-                    s += "Config affiliations: #{eaffs[e].keys.join(', ')}\nJSON affiliations: #{users[e][0][1]['affiliation']}\nNew affiliations: #{affs_str}\nReplace? (y/n/q/s)"
+                    s += "Config affiliations: #{eaffs[e].keys.join(', ')}\nJSON affiliations: #{users[e][0][1]['affiliation']}\nNew  affiliations: #{affs_str}\nReplace? (y/n/q/s)"
                     puts s
                     ans = mgetc.downcase
                     puts "> #{ans}"
@@ -327,8 +339,10 @@ def affiliations(affiliations_file, json_file, email_map)
                       break
                     end
                     answers[e] = ans
-                    pretty = JSON.pretty_generate answers
-                    File.write json_cache, pretty
+                    unless no_cache
+                      pretty = JSON.pretty_generate answers
+                      File.write json_cache, pretty
+                    end
                   end
                 end
                 if ans == 'y'
@@ -423,6 +437,7 @@ def affiliations(affiliations_file, json_file, email_map)
       gha = ghs.split(',').map(&:strip)
       puts "Note: multiple GH logins #{gha} for emails #{emails}, line #{ln}" if dbg && gha.length > 1
       # p gha
+      rolls = eaffs[emails[0]]
       gha.each do |gh|
         emails.each do |email|
           next if gh == '-'
@@ -431,6 +446,7 @@ def affiliations(affiliations_file, json_file, email_map)
             # FIXME/TODO we should avoid this
             # next
             # exit
+            # binding.pry
           end
           entry = users[email][0]
           login = gh.split('/').last.downcase
@@ -440,7 +456,7 @@ def affiliations(affiliations_file, json_file, email_map)
           #next unless source
           source = 'config' if source.nil?
           source = 'notfound' if saffs == 'NotFound'
-          entry = nil
+          # entry = nil # xxx
           unless entry
             if entries
               user = json_data[entries.first[0]].clone
@@ -461,6 +477,7 @@ def affiliations(affiliations_file, json_file, email_map)
           entries.each do |entry|
             index = entry[0]
             user = entry[1]
+            # p prios, prev_source, source
             higher_prio = prios[prev_source] > prios[source]
             if gender && gender.length == 1 && user['sex'] != gender
               puts "Note: overwriting gender #{user['sex']} --> #{gender} for #{login}/#{user['email']}, commits #{user['commits']}, line #{ln}" if dbg && !user['sex'].nil?
@@ -474,8 +491,10 @@ def affiliations(affiliations_file, json_file, email_map)
                   puts "Current data has higher priority '#{prev_source}' than '#{source}', replace? (y/n)"
                   ans = mgetc.downcase
                   answers[login] = ans
-                  pretty = JSON.pretty_generate answers
-                  File.write json_cache, pretty
+                  unless no_cache
+                    pretty = JSON.pretty_generate answers
+                    File.write json_cache, pretty
+                  end
                 end
               end
               if ans == 'y'
@@ -504,8 +523,10 @@ def affiliations(affiliations_file, json_file, email_map)
                     puts "Current data has higher priority '#{prev_source}' than '#{source}', replace? (y/n)"
                     ans = mgetc.downcase
                     answers[login] = ans
-                    pretty = JSON.pretty_generate answers
-                    File.write json_cache, pretty
+                    unless no_cache
+                      pretty = JSON.pretty_generate answers
+                      File.write json_cache, pretty
+                    end
                   end
                 end
                 if ans == 'y'
@@ -513,6 +534,33 @@ def affiliations(affiliations_file, json_file, email_map)
                   puts "Note: '#{prev_source}' -> '#{source}' overwritten affiliation '#{user['affiliation']}' --> '#{saffs}' for #{login}/#{user['email']}, commits #{user['commits']}, line #{ln}" unless ['', '?', 'NotFound', '(Unknown)', nil].include?(a)
                   json_data[index]['affiliation'] = saffs
                   json_data[index]['source'] = source
+                  if sync_to_config
+                    eml = user['email']
+                    leml = user['email'].downcase
+                    if delete_incorrect_lower && eml != leml
+                      eaffs.delete(leml)
+                    end
+                    if eaffs[eml].nil? || eaffs[eml].length != rolls.length
+                      puts "Updated config email by length diff '#{eml}': '#{eaffs[eml]}' -> '#{rolls}'"
+                      eaffs[eml] = rolls
+                    else
+                      diff = false
+                      eaffs[eml].each do |k, v|
+                        if !rolls.key?(k)
+                          diff = true
+                          break
+                        end
+                        if rolls[k] != v
+                          diff = true
+                          break
+                        end
+                      end
+                      if diff
+                        puts "Updated config email '#{eml}': '#{eaffs[eml]}' -> '#{rolls}'"
+                        eaffs[eml] = rolls
+                      end
+                    end
+                  end
                 end
               end
             end

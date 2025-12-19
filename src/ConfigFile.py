@@ -22,7 +22,8 @@ def ReadConfigLine (file):
     line = file.readline ()
     if not line:
         return None
-    line = line.split('#')[0] # Get rid of any comments
+    if line.startswith('#'):
+        return ''
     line = line.strip () # and extra white space
     line = email_decode(line)
     if len (line) == 0: # we got rid of everything
@@ -86,7 +87,7 @@ def ReadEmailEmployers (name, domain):
     while line:
         m = EMMpat.match (line)
         if not m:
-            croak ('Funky email/employer line "%s"' % (line))
+            croak ('Funky email/employer line "%s" in file "%s"' % (line, name))
         email = m.group (1)
         company = m.group (2).strip ()
         enddate = ParseDate (m.group (4))
@@ -98,6 +99,7 @@ def ParseDate (cdate):
     if not cdate:
         return None
     sdate = cdate.split ('-')
+    # print 'date: %s' % (sdate)
     return datetime.date (int (sdate[0]), int (sdate[1]), int (sdate[2]))
 
 
@@ -166,8 +168,9 @@ def ReadFileType (filename):
 
         m = regex_file_type.match (line)
         if not m or len (m.groups ()) != 2:
-            ConfigFile.croak ('Funky file type line "%s"' % (line))
-        if not patterns.has_key (m.group (1)):
+            croak ('Funky file type line "%s"' % (line))
+
+        if m.group (1) not in patterns:
             patterns[m.group (1)] = []
         if m.group (1) not in order:
             print '%s not found, appended to the last order' % m.group (1)
@@ -185,9 +188,9 @@ def ReadFileType (filename):
 
 def ConfigFile (name, confdir):
     try:
-        file = open (confdir + name, 'r')
+        file = open (os.path.join(confdir, name), 'r')
     except IOError:
-        croak ('Unable to open config file %s' % (confdir + name))
+        croak ('Unable to open config file %s' % (os.path.join(confdir, name)))
     line = ReadConfigLine (file)
     while line:
         sline = line.split (None, 2)

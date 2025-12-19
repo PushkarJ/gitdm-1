@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+# ./update_login_contributions.rb && JSON=affiliated.json ./update_login_contributions.rb && cp affiliated.json ../../devstats/github_users.json
+
 require 'json'
 require 'csv'
 require 'pry'
@@ -28,10 +30,11 @@ def update_json(json_file, csv_file)
     data = data.sort_by { |u| [-u['commits'], u['login'], u['email']] }
     pretty = JSON.pretty_generate data
     File.write json_file, pretty
-    puts "updated #{updates} entries"
+    puts "updated #{updates} entries in #{json_file}"
   else
-    puts "everything up to date"
+    puts "everything up to date in #{json_file}"
   end
 end
 
-update_json('github_users.json', 'login_contributions.csv')
+file_to_update = ENV['JSON'] || 'github_users.json'
+update_json(file_to_update, 'login_contributions.csv')
